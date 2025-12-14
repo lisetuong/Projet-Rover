@@ -30,12 +30,14 @@ DT = 0.020 # [s] Période d’Echantillonnage (20 ms)
 V_MAX = 7.34 # V
 def control_vitesse(consigne_V1, duree=5.0):
     """
-    consigne_V1 : consigne de vitesse en rpm de la roue 1
+    consigne_V1 : consigne de vitesse en rpm des 4 roues
     duree : durée du test (s)
     """
     print(f"Control active: Consigne = {consigne_V1} rpm, Duree = {duree}s")
     t_start = time.ticks_ms() # instant de départ
     init_logging()
+    integral = 0
+
     while (time.ticks_diff(time.ticks_ms(), t_start) / 1000.0) < duree:
         # Lire l’incrément d’encodeur sur 20 ms
         deltas = motor.read_encoder_deltas()
@@ -43,15 +45,20 @@ def control_vitesse(consigne_V1, duree=5.0):
         V2 = motor.calculate_rpm(deltas[1])
         V3 = motor.calculate_rpm(deltas[2])
         V4 = motor.calculate_rpm(deltas[3])
+
         # Calcul de l’erreur
         error = consigne_V1 - V1
+        integral += error * DT
         # Calcul de la tension de commande (PI)
-        u = Kp * error
+        u = Kp * error + Ki * integral
         # Saturation à -7.34 à 7.34 V
         if u > V_MAX:
             u = V_MAX
+            integral -= error * DT
         elif u < -V_MAX:
             u = -V_MAX
+            integral -= error * DT
+        
         # Appliquer la tension sur le moteur choisi
         voltages = [u , u, u, u]
         motor.control_motor_voltage(*voltages)
@@ -59,6 +66,48 @@ def control_vitesse(consigne_V1, duree=5.0):
         append_log(time.ticks_diff(time.ticks_ms(), t_start),V1,V2,V3,V4)
         time.sleep(DT)
     motor.control_motor_pwm(0, 0, 0, 0)
+
+def deplacement():
+    # Test des moteurs
+    DURATION = 3.0      # secondes
+    print(f"Controle moteurs... pendant = {DURATION} s")
+    
+    # Avance ligne droite
+    motor.control_motor_pwm(-1000, -1000, -1000, -1000)
+    time.sleep(DURATION)
+    print("Arrêt moteurs.")
+    motor.control_motor_pwm(0, 0, 0, 0)
+
+    # Avance droite
+    motor.control_motor_pwm(1000, -1000, -1000, 1000)
+    time.sleep(DURATION)
+    print("Arrêt moteurs.")
+    motor.control_motor_pwm(0, 0, 0, 0)
+
+    # Avance diagonale droite
+    motor.control_motor_pwm(0, -1000, -1000, 0)
+    time.sleep(DURATION)
+    print("Arrêt moteurs.")
+    motor.control_motor_pwm(0, 0, 0, 0)
+
+    # Tourne droite
+    motor.control_motor_pwm(1000, 1000, -1000, -1000)
+    time.sleep(DURATION)
+    print("Arrêt moteurs.")
+    motor.control_motor_pwm(0, 0, 0, 0)
+
+    # Tourne autour droite
+    motor.control_motor_pwm(0, 0, -1000, -1000)
+    time.sleep(DURATION)
+    print("Arrêt moteurs.")
+    motor.control_motor_pwm(0, 0, 0, 0)
+
+    # Tourne autour arrière
+    motor.control_motor_pwm(1000, 0, -1000, 0)
+    time.sleep(DURATION)
+    print("Arrêt moteurs.")
+    motor.control_motor_pwm(0, 0, 0, 0)
+        
 
 
 if __name__ == "__main__":
@@ -68,47 +117,9 @@ if __name__ == "__main__":
     motor.set_motor_parameters()
 
     try:
-        """
-        # Test des moteurs
-        DURATION = 3.0      # secondes
-        print(f"Controle moteurs... pendant = {DURATION} s")
-        
-        # Avance ligne droite
-        motor.control_motor_pwm(-1000, -1000, -1000, -1000)
-        time.sleep(DURATION)
-        print("Arrêt moteurs.")
-        motor.control_motor_pwm(0, 0, 0, 0)
+        #Déplacements basiques
+        #deplacement()
 
-        # Avance droite
-        motor.control_motor_pwm(1000, -1000, -1000, 1000)
-        time.sleep(DURATION)
-        print("Arrêt moteurs.")
-        motor.control_motor_pwm(0, 0, 0, 0)
-
-        # Avance diagonale droite
-        motor.control_motor_pwm(0, -1000, -1000, 0)
-        time.sleep(DURATION)
-        print("Arrêt moteurs.")
-        motor.control_motor_pwm(0, 0, 0, 0)
-
-        # Tourne droite
-        motor.control_motor_pwm(1000, 1000, -1000, -1000)
-        time.sleep(DURATION)
-        print("Arrêt moteurs.")
-        motor.control_motor_pwm(0, 0, 0, 0)
-
-        # Tourne autour droite
-        motor.control_motor_pwm(0, 0, -1000, -1000)
-        time.sleep(DURATION)
-        print("Arrêt moteurs.")
-        motor.control_motor_pwm(0, 0, 0, 0)
-
-        # Tourne autour arrière
-        motor.control_motor_pwm(1000, 0, -1000, 0)
-        time.sleep(DURATION)
-        print("Arrêt moteurs.")
-        motor.control_motor_pwm(0, 0, 0, 0)
-        """
         # Commande de vitesse
         control_vitesse(250)
 

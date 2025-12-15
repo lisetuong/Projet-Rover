@@ -8,7 +8,7 @@ import os
 # Fonctions utilitaires de LOGGING dans le microcontrôleur Pico W
 # ==============================
 LOG_DIR = "logs" # Répertoire pour mettre le de log
-LOG_FILE = LOG_DIR + "/speed_log0.csv" # Chemin d’accès vers le fichier log
+LOG_FILE = LOG_DIR + "/speed_log1.csv" # Chemin d’accès vers le fichier log
 def init_logging():
     """Créer le dossier et le fichier CSV si besoin."""
     if LOG_DIR not in os.listdir():
@@ -28,42 +28,48 @@ Kp = 0.034 # [V/rpm]
 Ki = 0.32 # [V/(rpm·s)]
 DT = 0.020 # [s] Période d’Echantillonnage (20 ms)
 V_MAX = 7.34 # V
-def control_vitesse(consigne_V1, duree=5.0):
+def control_vitesse(consignes, duree=5.0):
     """
     consigne_V1 : consigne de vitesse en rpm des 4 roues
     duree : durée du test (s)
     """
-    print(f"Control active: Consigne = {consigne_V1} rpm, Duree = {duree}s")
+    print(f"Control active: Consigne = {consignes} rpm, Duree = {duree}s")
     t_start = time.ticks_ms() # instant de départ
     init_logging()
-    integral = 0
+    integral = [0, 0, 0, 0]
 
     while (time.ticks_diff(time.ticks_ms(), t_start) / 1000.0) < duree:
         # Lire l’incrément d’encodeur sur 20 ms
         deltas = motor.read_encoder_deltas()
-        V1 = motor.calculate_rpm(deltas[0])
-        V2 = motor.calculate_rpm(deltas[1])
-        V3 = motor.calculate_rpm(deltas[2])
-        V4 = motor.calculate_rpm(deltas[3])
+        vitesses = [
+            motor.calculate_rpm(deltas[0]),
+            motor.calculate_rpm(deltas[1]),
+            motor.calculate_rpm(deltas[2]),
+            motor.calculate_rpm(deltas[3])]
+        voltages = []
 
-        # Calcul de l’erreur
-        error = consigne_V1 - V1
-        integral += error * DT
-        # Calcul de la tension de commande (PI)
-        u = Kp * error + Ki * integral
-        # Saturation à -7.34 à 7.34 V
-        if u > V_MAX:
-            u = V_MAX
-            integral -= error * DT
-        elif u < -V_MAX:
-            u = -V_MAX
-            integral -= error * DT
+        for i in range(4):
+            # Calcul de l’erreur
+            error = consignes[i] - vitesses[i]
+            integral[i] += error * DT
+
+            # Calcul de la tension de commande (PI)
+            u = Kp * error + Ki * integral[i]
+
+            # Saturation à -7.34 à 7.34 V
+            if u > V_MAX:
+                u = V_MAX
+                integral[i] -= error * DT
+            elif u < -V_MAX:
+                u = -V_MAX
+                integral[i] -= error * DT
+
+            voltages.append(u)
         
-        # Appliquer la tension sur le moteur choisi
-        voltages = [u , u, u, u]
+        # Appliquer la tension sur les 4 moteurs
         motor.control_motor_voltage(*voltages)
-        print(f"Consigne: {consigne_V1:.1f} rpm, Measure: {V1:.2f} rpm, u={u:.2f} V")
-        append_log(time.ticks_diff(time.ticks_ms(), t_start),V1,V2,V3,V4)
+        print(f"Consigne: {[round(c,1) for c in consignes]} rpm, Measures: {[round(v,2) for v in vitesses]} rpm | U: {[round(u,2) for u in voltages]} V")
+        append_log(time.ticks_diff(time.ticks_ms(), t_start),vitesses[0], vitesses[1], vitesses[2], vitesses[3])
         time.sleep(DT)
     motor.control_motor_pwm(0, 0, 0, 0)
 
@@ -121,7 +127,7 @@ if __name__ == "__main__":
         #deplacement()
 
         # Commande de vitesse
-        control_vitesse(250)
+        control_vitesse([250, 250, 250, 250])
 
     except KeyboardInterrupt:
         motor.control_motor_pwm(0, 0, 0, 0)

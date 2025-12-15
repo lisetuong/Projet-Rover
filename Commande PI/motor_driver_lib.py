@@ -121,4 +121,3 @@ def control_motor_voltage(v1, v2, v3, v4):
     p3 = voltage_to_pwm(v3)
     p4 = voltage_to_pwm(v4)
     control_motor_pwm(p1, p2, p3, p4)
-

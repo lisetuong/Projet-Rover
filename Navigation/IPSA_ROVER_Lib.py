@@ -79,7 +79,7 @@ class IpsaRoverLib:
         time.sleep(0.05)
         self.write_register(REG['PULSE_PER_LINE'], [0x00, 13])            # 13 pulse/line
         time.sleep(0.05)
-        self.write_register(REG['WHEEL_DIAMETER'], list(self.float_to_bytes(65.0)))  # 65 mm diameter
+        self.write_register(REG['WHEEL_DIAMETER'], list(self.float_to_bytes(60.0)))  # 60 mm diameter
         time.sleep(0.05)
         self.write_register(REG['DEADZONE'], [0x04, 0xE2])                # 1250 (0x04E2) deadzone
         time.sleep(0.05)

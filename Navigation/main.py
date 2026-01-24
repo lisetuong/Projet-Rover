@@ -20,7 +20,7 @@ def linear_move_cm(distance_cm):
             break
         time.sleep(0.01)
 
-    driver.control_motor_speed(0, 0, 0, 0)
+    driver.control_motors_pwm(0, 0, 0, 0)
 
 def lateral_move_cm(distance_cm):
     """
@@ -37,7 +37,7 @@ def lateral_move_cm(distance_cm):
             break
         time.sleep(0.01)
 
-    driver.control_motor_speed(0, 0, 0, 0)
+    driver.control_motors_pwm(0, 0, 0, 0)
 
 def turn_degree(angle):
     """
@@ -60,9 +60,35 @@ def turn_degree(angle):
             break
         time.sleep(0.01)
 
-    driver.control_motor_speed(0, 0, 0, 0)
+    driver.control_motors_pwm(0, 0, 0, 0)
 
+def turn_servo(angle):
+    """
+    angle = 0° = droite = 800us
+    angle = 90° = milieu = 1750us
+    angle = 180° = gauche = 2700us
+    """
+    if angle < 0:
+        angle = 0
+    elif angle > 180:
+        angle = 180
+
+    pulse_us = int(800 + angle * (1900 / 180))
+    driver.set_servo_pulse_us(pulse_us)
+
+def sonar_distance():
+    temps = driver.read_sonar_echo_time_ms()
+    if temps != None:
+        temps *= 0.001
+        distance_m = (temps * 340) / 2
+        distance_cm = distance_m * 100
+        print(f"{distance_cm} cm")
 
 linear_move_cm(20)
 lateral_move_cm(20)
 turn_degree(90)
+turn_servo(0)
+turn_servo(90)
+turn_servo(180)
+while True:
+    sonar_distance()

@@ -113,6 +113,7 @@ def deplacement():
     time.sleep(DURATION)
     print("Arrêt moteurs.")
     motor.control_motor_pwm(0, 0, 0, 0)
+        
 
 
 if __name__ == "__main__":

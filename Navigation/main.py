@@ -1,18 +1,34 @@
+import math
 import time
 from IPSA_ROVER_Lib import IpsaRoverLib
 
 driver = IpsaRoverLib()
 
+coo = [(0,0)]
+orientation = 0
+
+def calcul_coo(distance, orientation):
+    dx = distance * math.cos(math.radians(orientation))
+    dy = distance * math.sin(math.radians(orientation))
+
+    x = round(coo[-1][0] + dx, 3)
+    y = round(coo[-1][1] + dy, 3)
+
+    coo.append((x,y))
+
 def linear_move_cm(distance_cm):
     """
     distance_cm > 0 : déplacement en avant
     """
-    ticks_target = int(distance_cm * 124)
+    ticks_target = int(abs(distance_cm) * 124)
 
     start_ticks = driver.read_total_encoder_counts()
     start = start_ticks[0]  # on prend un moteur de référence
 
-    driver.control_motor_speed(-200, -200, -200, -200)
+    if distance_cm > 0:
+        driver.control_motor_speed(-200, -200, -200, -200)
+    else:
+        driver.control_motor_speed(200, 200, 200, 200)
 
     while True:
         current = driver.read_total_encoder_counts()[0]
@@ -22,14 +38,21 @@ def linear_move_cm(distance_cm):
 
     driver.control_motors_pwm(0, 0, 0, 0)
 
+    calcul_coo(distance_cm, orientation)
+
 def lateral_move_cm(distance_cm):
     """
     distance_cm > 0 : déplacement à droite
     """
-    ticks_target = int(distance_cm * 124)
+    ticks_target = int(abs(distance_cm) * 124)
     start = driver.read_total_encoder_counts()[0]
 
-    driver.control_motor_speed(200, -200, -200, 200)
+    if distance_cm > 0:
+        driver.control_motor_speed(200, -200, -200, 200)
+        calcul_coo(distance_cm, orientation - 90)
+    else:
+        driver.control_motor_speed(-200, 200, 200, -200)
+        calcul_coo(distance_cm, orientation + 90)
 
     while True:
         current = driver.read_total_encoder_counts()[0]
@@ -41,15 +64,15 @@ def lateral_move_cm(distance_cm):
 
 def turn_degree(angle):
     """
-    angle > 0 : tourne à droite
-    angle < 0 : tourne à gauche
+    angle > 0 : tourne à gauche
+    angle < 0 : tourne à droite
     """
     arc_cm = abs(angle) * 3.1416 * 17.1 / 360
     ticks_target = int(arc_cm * 248)
 
     start = driver.read_total_encoder_counts()[0]
 
-    if angle > 0:
+    if angle < 0:
         driver.control_motor_speed(200, 200, -200, -200)
     else:
         driver.control_motor_speed(-200, -200, 200, 200)
@@ -61,6 +84,9 @@ def turn_degree(angle):
         time.sleep(0.01)
 
     driver.control_motors_pwm(0, 0, 0, 0)
+
+    global orientation
+    orientation += angle
 
 def turn_servo(angle):
     """
@@ -85,11 +111,13 @@ def sonar_distance():
         distance_cm = distance_m * 100
         print(f"{distance_cm} cm")
 
-turn_servo(0)
-turn_servo(90)
-turn_servo(180)
-linear_move_cm(20)
-lateral_move_cm(20)
-turn_degree(90)
-while True:
-    sonar_distance()
+if __name__ == "__main__":
+    print(coo, "\n", orientation, "\n")
+    linear_move_cm(20)
+    print(coo, "\n", orientation, "\n")
+    turn_degree(-45)
+    print(coo, "\n", orientation, "\n")
+    linear_move_cm(20)
+    print(coo, "\n", orientation, "\n")
+    lateral_move_cm(20)
+    print(coo, "\n", orientation, "\n")

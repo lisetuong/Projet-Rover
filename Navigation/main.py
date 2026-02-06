@@ -66,15 +66,16 @@ def turn_servo(angle):
     """
     angle = 0° = droite = 800us
     angle = 90° = milieu = 1750us
-    angle = 180° = gauche = 2700us
+    angle = 180° = gauche = 2600us
     """
     if angle < 0:
         angle = 0
     elif angle > 180:
         angle = 180
 
-    pulse_us = int(800 + angle * (1900 / 180))
+    pulse_us = int(800 + angle * (1800 / 180))
     driver.set_servo_pulse_us(pulse_us)
+    time.sleep(0.5)
 
 def sonar_distance():
     temps = driver.read_sonar_echo_time_ms()
@@ -84,11 +85,11 @@ def sonar_distance():
         distance_cm = distance_m * 100
         print(f"{distance_cm} cm")
 
-linear_move_cm(20)
-lateral_move_cm(20)
-turn_degree(90)
 turn_servo(0)
 turn_servo(90)
 turn_servo(180)
+linear_move_cm(20)
+lateral_move_cm(20)
+turn_degree(90)
 while True:
     sonar_distance()

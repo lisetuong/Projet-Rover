@@ -1,5 +1,6 @@
 import math
 import time
+import matplotlib.pyplot as plt
 from IPSA_ROVER_Lib import IpsaRoverLib
 
 driver = IpsaRoverLib()
@@ -15,6 +16,29 @@ def calcul_coo(distance, orientation):
     y = round(coo[-1][1] + dy, 3)
 
     coo.append((x,y))
+
+def dessin_trajet():
+    x_vals = [p[0] for p in coo]
+    y_vals = [p[1] for p in coo]
+
+    plt.figure()
+    plt.plot(x_vals, y_vals, 'b', marker='o')
+    plt.axhline(0, color='black')
+    plt.axvline(0, color='black')
+
+    plt.xlabel("X (cm)")
+    plt.ylabel("Y (cm)")
+    plt.title("Trajet du Rover")
+    plt.gca().set_aspect('equal', adjustable='box')
+
+    x_last, y_last = coo[-1]
+
+    dx = 0.1 * math.cos(math.radians(orientation))
+    dy = 0.1 * math.sin(math.radians(orientation))
+
+    plt.arrow(x_last, y_last, dx, dy, head_width=1, color="r")
+
+    plt.show()
 
 def linear_move_cm(distance_cm):
     """
@@ -138,3 +162,9 @@ def eviter_obstacle():
     else:
         print("Tourner à gauche")
         turn_degree(-90)
+
+
+if __name__ == "__main__":
+    coo = [(0,0), (20,0), (20,20), (-20, 20)]
+    orientation = 180
+    dessin_trajet()

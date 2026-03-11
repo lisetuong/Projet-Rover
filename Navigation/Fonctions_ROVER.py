@@ -9,10 +9,9 @@ driver = IpsaRoverLib()
 
 SSID = "PC_CV"
 PASSWORD = "codechloepc"
-PC_IP = "10.36.87.129"
+PC_IP = "10.36.87.144"
 PORT = 5005
 
-#modif 1 :
 trajet = [(0, 0)] 
 orientation = 90  # On part vers le "haut" (90°) par défaut
 
@@ -36,7 +35,7 @@ def setup_wifi():
         print("Échec de connexion WiFi. Vérifie le partage de connexion.")
 
 def calcul_coo(distance, orientation):
-    last_x, last_y = trajet[-1] #modif nom et position 
+    last_x, last_y = trajet[-1]
 
     dx = distance * math.cos(math.radians(orientation))
     dy = distance * math.sin(math.radians(orientation))
@@ -78,6 +77,7 @@ def turn_degree(angle):
     
     # Mise à jour de la boussole interne
     orientation += angle
+    orientation %= 360
     print(f"🔄 Nouvelle orientation : {orientation}°")
 
 

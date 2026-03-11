@@ -1,163 +1,97 @@
 import math
 import time
-#import matplotlib.pyplot as plt
+import network
+import socket
+import json
 from IPSA_ROVER_Lib import IpsaRoverLib
 
 driver = IpsaRoverLib()
 
-coo = [(0,0)]
-orientation = 0
+SSID = "PC_CV"
+PASSWORD = "codechloepc"
+PC_IP = "10.36.87.129"
+PORT = 5005
 
-VITESSE_PWM_200_CM_S = 12.0
-last_update_time = None
+#modif 1 :
+trajet = [(0, 0)] 
+orientation = 90  # On part vers le "haut" (90°) par défaut
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+def setup_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(SSID, PASSWORD)
+    print("Tentative de connexion WiFi...")
+    
+    # Attendre 10 secondes max pour la connexion
+    retry = 0
+    while not wlan.isconnected() and retry < 20:
+        time.sleep(0.5)
+        retry += 1
+    
+    if wlan.isconnected():
+        print("Connecté ! IP du Rover :", wlan.ifconfig()[0])
+    else:
+        print("Échec de connexion WiFi. Vérifie le partage de connexion.")
 
 def calcul_coo(distance, orientation):
+    last_x, last_y = trajet[-1] #modif nom et position 
+
     dx = distance * math.cos(math.radians(orientation))
     dy = distance * math.sin(math.radians(orientation))
 
-    x = round(coo[-1][0] + dx, 3)
-    y = round(coo[-1][1] + dy, 3)
+    x = round(last_x + dx, 3)
+    y = round(last_y + dy, 3)
 
-    coo.append((x,y))
-    print(f"Position actuelle : {coo[-1]}")
+    trajet.append((x, y))
+    print(f"📍 Position enregistrée : x={x}, y={y} (Distance parcourue: {distance}cm)")
+    
+    #envoi au PC : 
+    try:
+        message = json.dumps(trajet)
+        sock.sendto(message.encode(), (PC_IP, PORT))
+    except:
+        pass
 
-"""
-def dessin_trajet():
-    x_vals = [p[0] for p in coo]
-    y_vals = [p[1] for p in coo]
-
-    plt.figure()
-    plt.plot(x_vals, y_vals, 'b', marker='o')
-    plt.axhline(0, color='black')
-    plt.axvline(0, color='black')
-
-    plt.xlabel("X (cm)")
-    plt.ylabel("Y (cm)")
-    plt.title("Trajet du Rover")
-    plt.gca().set_aspect('equal', adjustable='box')
-
-    x_last, y_last = coo[-1]
-
-    dx = 0.1 * math.cos(math.radians(orientation))
-    dy = 0.1 * math.sin(math.radians(orientation))
-
-    plt.arrow(x_last, y_last, dx, dy, head_width=1, color="r")
-
-    plt.show()
-"""
-
-def distance_par_pwm_200(temps_s):
-    return VITESSE_PWM_200_CM_S * temps_s
-
-def linear_move_cm(distance_cm):
-    """
-    distance_cm > 0 : déplacement en avant
-    """
-    ticks_target = int(abs(distance_cm) * 124)
-    start = driver.read_total_encoder_counts()[0]
-    start_time = time.time()
-
-    if distance_cm > 0:
-        driver.control_motor_speed(-200, -200, -200, -200)
-    else:
-        driver.control_motor_speed(200, 200, 200, 200)
-
-    while True:
-        current = driver.read_total_encoder_counts()[0]
-        if abs(current - start) >= ticks_target:
-            break
-        time.sleep(0.01)
-
-    driver.control_motors_pwm(0, 0, 0, 0)
-
-    temps_ecoule = time.time() - start_time
-    distance_reelle = distance_par_pwm_200(temps_ecoule)
-
-    print(f"Temps : {temps_ecoule:.2f}s | Distance (PWM=200) : {distance_reelle:.2f} cm")
-
-    calcul_coo(distance_reelle if distance_cm > 0 else -distance_reelle, orientation)
-
-def lateral_move_cm(distance_cm):
-    """
-    distance_cm > 0 : déplacement à droite
-    """
-    ticks_target = int(abs(distance_cm) * 124)
-    start = driver.read_total_encoder_counts()[0]
-    start_time = time.time()
-
-    if distance_cm > 0:
-        driver.control_motor_speed(200, -200, -200, 200)
-        sens = orientation - 90
-    else:
-        driver.control_motor_speed(-200, 200, 200, -200)
-        sens = orientation + 90
-
-    while True:
-        current = driver.read_total_encoder_counts()[0]
-        if abs(current - start) >= ticks_target:
-            break
-        time.sleep(0.01)
-
-    driver.control_motors_pwm(0, 0, 0, 0)
-
-    temps_ecoule = time.time() - start_time
-    distance_reelle = distance_par_pwm_200(temps_ecoule)
-
-    print(f"Lateral | Temps : {temps_ecoule:.2f}s | Distance : {distance_reelle:.2f} cm")
-
-    calcul_coo(distance_reelle if distance_cm > 0 else -distance_reelle, sens)
 
 def turn_degree(angle):
     """
     angle > 0 : tourne à gauche
     angle < 0 : tourne à droite
     """
+    global orientation
+    # Calcul physique du mouvement (ne pas trop toucher si ça marche)
     arc_cm = abs(angle) * 3.1416 * 17.1 / 360
     ticks_target = int(arc_cm * 248)
-
     start = driver.read_total_encoder_counts()[0]
 
-    if angle < 0:
+    if angle < 0: # Droite
         driver.control_motor_speed(200, 200, -200, -200)
-    else:
+    else: # Gauche
         driver.control_motor_speed(-200, -200, 200, 200)
 
-    while True:
-        current = driver.read_total_encoder_counts()[0]
-        if abs(current - start) >= ticks_target:
-            break
+    while abs(driver.read_total_encoder_counts()[0] - start) < ticks_target:
         time.sleep(0.01)
 
     driver.control_motors_pwm(0, 0, 0, 0)
-
-    global orientation
+    
+    # Mise à jour de la boussole interne
     orientation += angle
-    orientation %= 360
+    print(f"🔄 Nouvelle orientation : {orientation}°")
+
 
 def turn_servo(angle):
-    """
-    angle = 0° = droite = 800us
-    angle = 90° = milieu = 1750us
-    angle = 180° = gauche = 2600us
-    """
-    if angle < 0:
-        angle = 0
-    elif angle > 180:
-        angle = 180
-
     pulse_us = int(800 + angle * (1800 / 180))
     driver.set_servo_pulse_us(pulse_us)
     time.sleep(0.5)
 
 def sonar_distance():
     temps = driver.read_sonar_echo_time_ms()
-    if temps != None:
-        temps *= 0.001
-        distance_m = (temps * 340) / 2
-        distance_cm = distance_m * 100
-        print(f"{distance_cm} cm")
+    if temps is not None:
+        distance_cm = (temps * 0.001 * 340 / 2) * 100
         return distance_cm
-    return 10000
+    return 1000
 
 def eviter_obstacle():
     print("Obstacle détecté. Analyse du terrain...")
@@ -166,10 +100,12 @@ def eviter_obstacle():
     # Regarder à Droite (0°)
     turn_servo(0)
     dist_droite = sonar_distance()
-    
+    time.sleep(0.3)
+
     # Regarder à Gauche (180°)
     turn_servo(180)
     dist_gauche = sonar_distance()
+    time.sleep(0.3)
     
     # Replacer le servo au centre (90°)
     turn_servo(90)
@@ -187,4 +123,4 @@ def eviter_obstacle():
     # Cas 3 : Plus d'espace à gauche (ou égalité)
     else:
         print(f"Espace à gauche ({dist_gauche}cm). Rotation à gauche.")
-        turn_degree(90)
+        turn_degree(90) 

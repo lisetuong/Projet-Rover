@@ -123,4 +123,35 @@ def eviter_obstacle():
     # Cas 3 : Plus d'espace à gauche (ou égalité)
     else:
         print(f"Espace à gauche ({dist_gauche}cm). Rotation à gauche.")
-        turn_degree(90) 
+        turn_degree(90)
+
+def mission():
+    try:
+        setup_wifi()
+        turn_servo(90)
+        driver.control_motors_pwm(0,0,0,0)
+
+        start_encoder = driver.read_total_encoder_counts()[0]
+        driver.control_motor_speed(-200, -200, -200, -200)
+
+        while True:
+            dist = sonar_distance()
+            if dist < 15:
+                driver.control_motors_pwm(0, 0, 0, 0)
+                
+                current_encoder = driver.read_total_encoder_counts()[0]
+                distance_cm = abs(current_encoder - start_encoder) / 124
+                
+                # Cette fonction va maintenant envoyer l'info en WiFi toute seule !
+                calcul_coo(distance_cm, orientation)
+                
+                eviter_obstacle()
+                
+                start_encoder = driver.read_total_encoder_counts()[0]
+                driver.control_motor_speed(-200, -200, -200, -200)
+
+            time.sleep(0.1)
+    
+    except KeyboardInterrupt:
+        driver.control_motors_pwm(0, 0, 0, 0)
+        print("Fin du parcours.")

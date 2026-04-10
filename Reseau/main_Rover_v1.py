@@ -34,7 +34,40 @@ while True:
         
         if msg.startswith("mission="):
             statut = int(msg.split("=")[1])
-            Rover.mission(statut)
-            net.send("statut", statut)
+            try:
+                if statut == 0:
+                    raise KeyboardInterrupt
+                
+                Rover.turn_servo(90)
+                driver.control_motors_pwm(0,0,0,0)
+
+                start_encoder = driver.read_total_encoder_counts()[0]
+                driver.control_motor_speed(-200, -200, -200, -200)
+
+                while statut == 1:
+                    dist = Rover.sonar_distance()
+                    if dist < 15:
+                        driver.control_motors_pwm(0, 0, 0, 0)
+                        
+                        current_encoder = driver.read_total_encoder_counts()[0]
+                        distance_cm = abs(current_encoder - start_encoder) / 124
+                        
+                        # Cette fonction va maintenant envoyer l'info en WiFi toute seule !
+                        Rover.calcul_coo(distance_cm, Rover.orientation)
+                        
+                        Rover.eviter_obstacle()
+                        
+                        start_encoder = driver.read_total_encoder_counts()[0]
+                        driver.control_motor_speed(-200, -200, -200, -200)
+
+                    msg = net.receive()
+                    if msg and msg.startswith("mission="):
+                        statut = int(msg.split("=")[1])
+
+                    time.sleep(0.1)
+            
+            except KeyboardInterrupt:
+                driver.control_motors_pwm(0, 0, 0, 0)
+                print("Fin du parcours.")
 
     time.sleep(0.1)

@@ -1,38 +1,11 @@
 import math
 import time
-import network
-import socket
-import json
 from IPSA_Rover_Lib import IpsaRoverLib
 
 driver = IpsaRoverLib()
 
-SSID = "PC_CV"
-PASSWORD = "codechloepc"
-PC_IP = "10.36.87.144"
-PORT = 5005
-
 trajet = [(0, 0)] 
 orientation = 90  # On part vers le "haut" (90°) par défaut
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-def setup_wifi():
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    wlan.connect(SSID, PASSWORD)
-    print("Tentative de connexion WiFi...")
-    
-    # Attendre 10 secondes max pour la connexion
-    retry = 0
-    while not wlan.isconnected() and retry < 20:
-        time.sleep(0.5)
-        retry += 1
-    
-    if wlan.isconnected():
-        print("Connecté ! IP du Rover :", wlan.ifconfig()[0])
-    else:
-        print("Échec de connexion WiFi. Vérifie le partage de connexion.")
 
 def calcul_coo(distance, orientation):
     last_x, last_y = trajet[-1]
@@ -45,14 +18,64 @@ def calcul_coo(distance, orientation):
 
     trajet.append((x, y))
     print(f"📍 Position enregistrée : x={x}, y={y} (Distance parcourue: {distance}cm)")
-    
-    #envoi au PC : 
-    try:
-        message = json.dumps(trajet)
-        sock.sendto(message.encode(), (PC_IP, PORT))
-    except:
-        pass
 
+def linear_move_cm(distance_cm):
+    """
+    distance_cm > 0 : déplacement en avant
+    """
+    ticks_target = int(abs(distance_cm) * 124)
+    start = driver.read_total_encoder_counts()[0]
+    start_time = time.time()
+
+    if distance_cm > 0:
+        driver.control_motor_speed(-200, -200, -200, -200)
+    else:
+        driver.control_motor_speed(200, 200, 200, 200)
+
+    while True:
+        current = driver.read_total_encoder_counts()[0]
+        if abs(current - start) >= ticks_target:
+            break
+        time.sleep(0.01)
+
+    driver.control_motors_pwm(0, 0, 0, 0)
+
+    temps_ecoule = time.time() - start_time
+    distance_reelle = 12* temps_ecoule
+
+    print(f"Temps : {temps_ecoule:.2f}s | Distance (PWM=200) : {distance_reelle:.2f} cm")
+
+    calcul_coo(distance_reelle if distance_cm > 0 else -distance_reelle, orientation)
+
+def lateral_move_cm(distance_cm):
+    """
+    distance_cm > 0 : déplacement à droite
+    """
+    ticks_target = int(abs(distance_cm) * 124)
+    start = driver.read_total_encoder_counts()[0]
+    start_time = time.time()
+
+    if distance_cm > 0:
+        driver.control_motor_speed(200, -200, -200, 200)
+        sens = orientation - 90
+    else:
+        driver.control_motor_speed(-200, 200, 200, -200)
+        sens = orientation + 90
+
+    while True:
+        current = driver.read_total_encoder_counts()[0]
+        if abs(current - start) >= ticks_target:
+            break
+        time.sleep(0.01)
+
+    driver.control_motors_pwm(0, 0, 0, 0)
+
+    temps_ecoule = time.time() - start_time
+    distance_reelle = 12 * temps_ecoule
+
+    print(f"Lateral | Temps : {temps_ecoule:.2f}s | Distance : {distance_reelle:.2f} cm")
+
+    calcul_coo(distance_reelle if distance_cm > 0 else -distance_reelle, sens)
 
 def turn_degree(angle):
     """
@@ -101,12 +124,10 @@ def eviter_obstacle():
     turn_servo(0)
     dist_droite = sonar_distance()
     time.sleep(0.3)
-
     # Regarder à Gauche (180°)
     turn_servo(180)
     dist_gauche = sonar_distance()
     time.sleep(0.3)
-    
     # Replacer le servo au centre (90°)
     turn_servo(90)
     
@@ -114,27 +135,27 @@ def eviter_obstacle():
     if dist_droite < 10 and dist_gauche < 10:
         print("Coincé ! Demi-tour complet.")
         turn_degree(180) # Fait un demi-tour
-        
     # Cas 2 : Plus d'espace à droite
     elif dist_droite > dist_gauche:
         print(f"Espace à droite ({dist_droite}cm). Rotation à droite.")
         turn_degree(-90) 
-        
     # Cas 3 : Plus d'espace à gauche (ou égalité)
     else:
         print(f"Espace à gauche ({dist_gauche}cm). Rotation à gauche.")
         turn_degree(90)
 
-def mission():
+def mission(statut):
     try:
-        setup_wifi()
+        if statut == 0:
+            raise KeyboardInterrupt
+        
         turn_servo(90)
         driver.control_motors_pwm(0,0,0,0)
 
         start_encoder = driver.read_total_encoder_counts()[0]
         driver.control_motor_speed(-200, -200, -200, -200)
 
-        while True:
+        while statut == 1:
             dist = sonar_distance()
             if dist < 15:
                 driver.control_motors_pwm(0, 0, 0, 0)

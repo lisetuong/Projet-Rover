@@ -241,9 +241,3 @@ if __name__ == "__main__":
         echo_time_ms = driver.read_sonar_echo_time_ms()
         print(f"Temps de vol de l'onde : {echo_time_ms}")
         time.sleep(.5)
-    
-
-
-     
- 
-

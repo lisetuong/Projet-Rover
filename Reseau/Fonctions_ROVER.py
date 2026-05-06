@@ -7,6 +7,10 @@ driver = IpsaRoverLib()
 trajet = [(0, 0)] 
 orientation = 90  # On part vers le "haut" (90°) par défaut
 
+start_encoder = None
+current_mode = None   # "linear", "lateral", "rotate"
+start_orientation = None
+
 def calcul_coo(distance, orientation):
     last_x, last_y = trajet[-1]
 
@@ -104,25 +108,72 @@ def turn_degree(angle):
     print(f"🔄 Nouvelle orientation : {orientation}°")
 
 def forward():
+    global start_encoder, current_mode
+    start_encoder = driver.read_total_encoder_counts()[0]
+    current_mode = "linear"
     driver.control_motor_speed(-200, -200, -200, -200)
 
 def backward():
+    global start_encoder, current_mode
+    start_encoder = driver.read_total_encoder_counts()[0]
+    current_mode = "linear"
     driver.control_motor_speed(200, 200, 200, 200)
 
 def right():
+    global start_encoder, current_mode
+    start_encoder = driver.read_total_encoder_counts()[0]
+    current_mode = "lateral"
     driver.control_motor_speed(200, -200, -200, 200)
 
 def left():
+    global start_encoder, current_mode
+    start_encoder = driver.read_total_encoder_counts()[0]
+    current_mode = "lateral"
     driver.control_motor_speed(-200, 200, 200, -200)
 
 def turn_left():
+    global start_encoder, current_mode, start_orientation
+    start_encoder = driver.read_total_encoder_counts()[0]
+    start_orientation = orientation
+    current_mode = "rotate"
     driver.control_motor_speed(-200, -200, 200, 200)
 
 def turn_right():
+    global start_encoder, current_mode, start_orientation
+    start_encoder = driver.read_total_encoder_counts()[0]
+    start_orientation = orientation
+    current_mode = "rotate"
     driver.control_motor_speed(200, 200, -200, -200)
 
 def stop():
+    global start_encoder, current_mode, orientation
+
     driver.control_motors_pwm(0, 0, 0, 0)
+
+    if start_encoder is None:
+        return
+
+    end_encoder = driver.read_total_encoder_counts()[0]
+    delta_ticks = abs(end_encoder - start_encoder)
+
+    distance_cm = delta_ticks / 124
+
+    if current_mode == "linear":
+        calcul_coo(distance_cm, orientation)
+
+    elif current_mode == "lateral":
+        sens = orientation - 90
+        calcul_coo(distance_cm, sens)
+
+    elif current_mode == "rotate":
+        # approx angle
+        angle = delta_ticks / 248
+        orientation += angle
+        orientation %= 360
+        print(f"🔄 Nouvelle orientation : {orientation}°")
+
+    start_encoder = None
+    current_mode = None
 
 def turn_servo(angle):
     pulse_us = int(800 + angle * (1800 / 180))

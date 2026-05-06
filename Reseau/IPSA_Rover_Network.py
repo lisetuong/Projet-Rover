@@ -1,4 +1,6 @@
-# rover_network.py
+"""
+-----------------------> NE PAS MODIFIER CE SCRIPT <-------------------
+"""
 import network
 import socket
 import _thread

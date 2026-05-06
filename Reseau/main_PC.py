@@ -10,7 +10,7 @@ s.setblocking(False)          # ← clé : recv() ne bloque plus
 win = tk.Tk()
 win.title("Contrôle Rover")
 
-label_distance = tk.Label(win, text="distance=?", font=("Arial", 20))
+label_distance = tk.Label(win, text="Orientation=?", font=("Arial", 20))
 label_distance.pack(pady=10)
 
 def move(distance_cm):
@@ -64,7 +64,7 @@ def lire_rover():
         data = s.recv(1024).decode()
         for ligne in data.strip().splitlines():
             print("Rover :", ligne)
-            if ligne.startswith("distance="):
+            if ligne.startswith("Orientation="):
                 label_distance.config(text=ligne)
     except BlockingIOError:
         pass    # pas de données disponibles, c'est normal

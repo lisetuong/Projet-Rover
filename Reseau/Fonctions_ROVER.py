@@ -103,6 +103,26 @@ def turn_degree(angle):
     orientation %= 360
     print(f"🔄 Nouvelle orientation : {orientation}°")
 
+def forward():
+    driver.control_motor_speed(-200, -200, -200, -200)
+
+def backward():
+    driver.control_motor_speed(200, 200, 200, 200)
+
+def right():
+    driver.control_motor_speed(200, -200, -200, 200)
+
+def left():
+    driver.control_motor_speed(-200, 200, 200, -200)
+
+def turn_left():
+    driver.control_motor_speed(-200, -200, 200, 200)
+
+def turn_right():
+    driver.control_motor_speed(200, 200, -200, -200)
+
+def stop():
+    driver.control_motors_pwm(0, 0, 0, 0)
 
 def turn_servo(angle):
     pulse_us = int(800 + angle * (1800 / 180))

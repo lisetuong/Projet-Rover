@@ -23,19 +23,19 @@ while True:
             print("Commande reçue :", ligne)
 
             if ligne == "forward":
-                driver.control_motor_speed(-200, -200, -200, -200)
+                Rover.forward()
             elif ligne == "backward":
-                driver.control_motor_speed(200, 200, 200, 200)
+                Rover.backward()
             elif ligne == "left":
-                driver.control_motor_speed(-200, 200, 200, -200)
+                Rover.left()
             elif ligne == "right":
-                driver.control_motor_speed(200, -200, -200, 200)
+                Rover.right()
             elif ligne == "turn_left":
-                driver.control_motor_speed(-200, -200, 200, 200)
+                Rover.turn_left()
             elif ligne == "turn_right":
-                driver.control_motor_speed(200, 200, -200, -200)
+                Rover.turn_right()
             elif ligne == "stop":
-                driver.control_motors_pwm(0, 0, 0, 0)
+                Rover.stop()
         
             if ligne.startswith("move="):
                 distance_cm = int(ligne.split("=")[1])

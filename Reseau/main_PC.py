@@ -13,36 +13,32 @@ win.title("Contrôle Rover")
 label_distance = tk.Label(win, text="Orientation=?", font=("Arial", 20))
 label_distance.pack(pady=10)
 
-def move(distance_cm):
+def send_cmd(cmd):
     try:
-        s.send(f"move={distance_cm}\n".encode())
+        s.send(f"{cmd}\n".encode())
     except OSError:
         pass
+
+def linear(distance_cm):
+    send_cmd(f"move={distance_cm}")
 
 def lateral(distance_cm):
-    try:
-        s.send(f"lateral={distance_cm}\n".encode())
-    except OSError:
-        pass
+    send_cmd(f"lateral={distance_cm}")
 
 def turn(distance_cm):
-    try:
-        s.send(f"turn={distance_cm}\n".encode())
-    except OSError:
-        pass
+    send_cmd(f"turn={distance_cm}")
 
 def mission(statut):
-    try:
-        s.send(f"mission={statut}\n".encode())
-    except OSError:
-        pass
+    send_cmd(f"mission={statut}")
+
+pressed_keys = set()
 
 def keypressed(e):
     key = e.keysym
     if key == "Up":
-        move(10)
+        linear(10)
     if key == "Down":
-        move(-10)
+        linear(-10)
     if key == "Right":
         lateral(10)
     if key == "Left":
@@ -53,10 +49,36 @@ def keypressed(e):
         turn(-10)
     if key == "m":
         mission(1)
-    if key == "s":
+    if key == "l":
         mission(0)
+    
+    if key in pressed_keys:
+        return
+    
+    pressed_keys.add(key)
+    
+    if key == "z":
+        send_cmd("forward")
+    elif key == "s":
+        send_cmd("backward")
+    elif key == "d":
+        send_cmd("right")
+    elif key == "q":
+        send_cmd("left")
+    elif key == "a":
+        send_cmd("turn_left")
+    elif key == "e":
+        send_cmd("turn_right")
 
-win.bind_all("<Key>", keypressed)
+def keyrelease(e):
+    key = e.keysym
+    if key in pressed_keys:
+        pressed_keys.remove(key)
+    if key in ("z", "s", "d", "q", "a", "e"):
+        send_cmd("stop")
+
+win.bind("<KeyPress>", keypressed)
+win.bind("<KeyRelease>", keyrelease)
 
 # --- Boucle de réception non bloquante ---
 def lire_rover():

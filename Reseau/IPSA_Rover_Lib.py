@@ -10,8 +10,6 @@ import time, utime
 from machine import I2C, Pin, PWM, time_pulse_us
 
 
-
-
 MOTOR_I2C_ADDRESS = 0x26        
 TICKS_PER_REVOLUTION = 2340
 SAMPLE_INTERVAL = 0.01  # 0.01 seconds = 10 ms
@@ -215,10 +213,8 @@ class IpsaRoverLib:
 
         return (echo_time_sum_us / valid_samples) / 1000.0
     
-
     
 if __name__ == "__main__":
-    
     driver = IpsaRoverLib()
     ## Déplacement
     driver.control_motor_speed(0, 0, 0, 0)

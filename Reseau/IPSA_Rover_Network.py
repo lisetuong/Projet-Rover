@@ -6,6 +6,7 @@ import socket
 import _thread
 from collections import deque
 
+
 class IpsaRoverNetwork:
     """
     Gère la communication Wi-Fi du rover en arrière-plan (cœur 1).
@@ -57,7 +58,6 @@ class IpsaRoverNetwork:
         """
         with self._lock:
             return self._inbox.popleft() if self._inbox else None
-
 
     def _network_task(self):
         # Démarrage de l'AP

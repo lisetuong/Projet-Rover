@@ -1,20 +1,26 @@
 import time
 from IPSA_Rover_Lib import IpsaRoverLib
 from IPSA_Rover_Network import IpsaRoverNetwork
-import Fonctions_ROVER as Rover
+import Fonctions_Rover as Rover
 
 net = IpsaRoverNetwork('Rover-Lise', 'rover1234')
 net.start()
-
 driver = IpsaRoverLib()
+
+def send_position():
+    x, y = Rover.trajet[-1]
+    net.send({
+        "X": x,
+        "Y": y,
+        "Orientation": Rover.orientation
+    })
 
 while True:
     # --- Mission autonome ---
     distance = 42   # lecture capteur ultrason par exemple
 
     # Envoyer des données au PC
-    net.send("Orientation", Rover.orientation)
-    net.send("Coordonnées", Rover.trajet)   # ou plusieurs à la fois
+    send_position()
 
     # Vérifier les commandes reçues du PC
     msg = net.receive()
@@ -71,8 +77,10 @@ while True:
                             
                             # Cette fonction va maintenant envoyer l'info en WiFi toute seule !
                             Rover.calcul_coo(distance_cm, Rover.orientation)
+                            send_position()
                             
                             Rover.eviter_obstacle()
+                            send_position()
                             
                             start_encoder = driver.read_total_encoder_counts()[0]
                             driver.control_motor_speed(-200, -200, -200, -200)
@@ -85,6 +93,13 @@ while True:
                 
                 except KeyboardInterrupt:
                     driver.control_motors_pwm(0, 0, 0, 0)
+
+                    current_encoder = driver.read_total_encoder_counts()[0]
+                    distance_cm = abs(current_encoder - start_encoder) / 124
+                    if distance_cm > 0:
+                        Rover.calcul_coo(distance_cm, Rover.orientation)
+
+                    send_position()
                     print("Fin du parcours.")
 
     time.sleep(0.1)

@@ -79,7 +79,7 @@ def lateral_move_cm(distance_cm):
 
     print(f"Lateral | Temps : {temps_ecoule:.2f}s | Distance : {distance_reelle:.2f} cm")
 
-    calcul_coo(distance_reelle if distance_cm > 0 else -distance_reelle, sens)
+    calcul_coo(distance_reelle, sens)
 
 def turn_degree(angle):
     """
@@ -110,39 +110,37 @@ def turn_degree(angle):
 def forward():
     global start_encoder, current_mode
     start_encoder = driver.read_total_encoder_counts()[0]
-    current_mode = "linear"
+    current_mode = "forward"
     driver.control_motor_speed(-200, -200, -200, -200)
 
 def backward():
     global start_encoder, current_mode
     start_encoder = driver.read_total_encoder_counts()[0]
-    current_mode = "linear"
+    current_mode = "backward"
     driver.control_motor_speed(200, 200, 200, 200)
 
 def right():
     global start_encoder, current_mode
     start_encoder = driver.read_total_encoder_counts()[0]
-    current_mode = "lateral"
+    current_mode = "right"
     driver.control_motor_speed(200, -200, -200, 200)
 
 def left():
     global start_encoder, current_mode
     start_encoder = driver.read_total_encoder_counts()[0]
-    current_mode = "lateral"
+    current_mode = "left"
     driver.control_motor_speed(-200, 200, 200, -200)
 
 def turn_left():
-    global start_encoder, current_mode, start_orientation
+    global start_encoder, current_mode
     start_encoder = driver.read_total_encoder_counts()[0]
-    start_orientation = orientation
-    current_mode = "rotate"
+    current_mode = "turn_left"
     driver.control_motor_speed(-200, -200, 200, 200)
 
 def turn_right():
-    global start_encoder, current_mode, start_orientation
+    global start_encoder, current_mode
     start_encoder = driver.read_total_encoder_counts()[0]
-    start_orientation = orientation
-    current_mode = "rotate"
+    current_mode = "turn_right"
     driver.control_motor_speed(200, 200, -200, -200)
 
 def stop():
@@ -158,17 +156,28 @@ def stop():
 
     distance_cm = delta_ticks / 124
 
-    if current_mode == "linear":
+    if current_mode == "forward":
         calcul_coo(distance_cm, orientation)
+    elif current_mode == "backward":
+        calcul_coo(-distance_cm, orientation)
 
-    elif current_mode == "lateral":
+    elif current_mode == "right":
         sens = orientation - 90
         calcul_coo(distance_cm, sens)
+    elif current_mode == "left":
+        sens = orientation + 90
+        calcul_coo(distance_cm, sens)
 
-    elif current_mode == "rotate":
-        # approx angle
-        angle = delta_ticks / 248
+    elif current_mode == "turn_left":
+        arc_cm = delta_ticks / 248
+        angle = arc_cm * 360 / (3.1416 * 17.1)
         orientation += angle
+        orientation %= 360
+        print(f"🔄 Nouvelle orientation : {orientation}°")
+    elif current_mode == "turn_right":
+        arc_cm = delta_ticks / 248
+        angle = arc_cm * 360 / (3.1416 * 17.1)
+        orientation -= angle
         orientation %= 360
         print(f"🔄 Nouvelle orientation : {orientation}°")
 
@@ -214,36 +223,3 @@ def eviter_obstacle():
     else:
         print(f"Espace à gauche ({dist_gauche}cm). Rotation à gauche.")
         turn_degree(90)
-
-def mission(statut):
-    try:
-        if statut == 0:
-            raise KeyboardInterrupt
-        
-        turn_servo(90)
-        driver.control_motors_pwm(0,0,0,0)
-
-        start_encoder = driver.read_total_encoder_counts()[0]
-        driver.control_motor_speed(-200, -200, -200, -200)
-
-        while statut == 1:
-            dist = sonar_distance()
-            if dist < 15:
-                driver.control_motors_pwm(0, 0, 0, 0)
-                
-                current_encoder = driver.read_total_encoder_counts()[0]
-                distance_cm = abs(current_encoder - start_encoder) / 124
-                
-                # Cette fonction va maintenant envoyer l'info en WiFi toute seule !
-                calcul_coo(distance_cm, orientation)
-                
-                eviter_obstacle()
-                
-                start_encoder = driver.read_total_encoder_counts()[0]
-                driver.control_motor_speed(-200, -200, -200, -200)
-
-            time.sleep(0.1)
-    
-    except KeyboardInterrupt:
-        driver.control_motors_pwm(0, 0, 0, 0)
-        print("Fin du parcours.")
